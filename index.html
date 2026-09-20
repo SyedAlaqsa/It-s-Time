@@ -342,23 +342,86 @@
     right: 18px;
     bottom: calc(18px + env(safe-area-inset-bottom, 0px));
     z-index: 10;
-    width: 52px; height: 52px;
-    border-radius: 50%;
+    width: auto;
+    min-width: 126px;
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 999px;
     border: 1px solid var(--line);
-    background: var(--bg-1);
+    background: rgba(20,16,42,0.94);
     color: var(--ink);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    backdrop-filter: blur(10px);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
-  .music-btn.playing { color: var(--glow-pink); border-color: rgba(255,111,168,0.4); }
-  .music-btn .bars { display: flex; align-items: flex-end; gap: 2px; height: 16px; }
-  .music-btn .bars span { width: 3px; background: currentColor; border-radius: 2px; height: 4px; }
-  .music-btn.playing .bars span { animation: bounce 0.9s ease-in-out infinite; }
+
+  .music-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255,111,168,0.4);
+  }
+
+  .music-btn:active {
+    transform: translateY(0);
+  }
+
+  .music-btn.playing {
+    color: var(--glow-pink);
+    border-color: rgba(255,111,168,0.4);
+  }
+
+  .music-btn .music-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .music-btn .bars {
+    display: none;
+    align-items: flex-end;
+    gap: 2px;
+    height: 14px;
+  }
+
+  .music-btn.playing .bars {
+    display: flex;
+  }
+
+  .music-btn .bars span {
+    width: 3px;
+    background: currentColor;
+    border-radius: 2px;
+    height: 4px;
+  }
+
+  .music-btn.playing .bars span {
+    animation: bounce 0.9s ease-in-out infinite;
+  }
+
   .music-btn.playing .bars span:nth-child(2) { animation-delay: 0.15s; }
   .music-btn.playing .bars span:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes bounce { 0%,100%{ height:4px; } 50%{ height:16px; } }
+
+  @keyframes bounce {
+    0%,100% { height: 4px; }
+    50% { height: 14px; }
+  }
+
+  @media (max-width: 420px) {
+    .music-btn {
+      right: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+      min-width: 116px;
+      height: 44px;
+      font-size: 12px;
+    }
+  }
 
   @media (max-width: 420px) {
     section { padding: 48px 18px; }
@@ -373,8 +436,10 @@
     <source src="./assets/falling.mp3" type="audio/mpeg">
     Your browser does not support audio.
 </audio>
-<button class="music-btn" id="musicBtn">
-  ▶ Play Music
+<button class="music-btn" id="musicBtn" type="button" aria-label="Play background music" aria-pressed="false">
+  <span class="music-icon" id="musicIcon">▶</span>
+  <span id="musicText">Play Music</span>
+  <span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>
 </button>
 
 <nav class="jump">
@@ -647,26 +712,54 @@
 (function(){
   const audio = document.getElementById('bgm');
   const btn = document.getElementById('musicBtn');
-  let playing = false;
-  btn.addEventListener('click', function(){
-    if (!playing) {
-      audio.volume = 0.5;
-      audio.play().then(() => {
-        playing = true;
-        btn.classList.add('playing');
-        btn.setAttribute('aria-pressed', 'true');
-        btn.setAttribute('aria-label', 'Pause background music');
-      }).catch(() => {
-        // file missing or blocked — no-op, button just won't activate
-      });
+  const icon = document.getElementById('musicIcon');
+  const text = document.getElementById('musicText');
+
+  if (!audio || !btn) return;
+
+  audio.volume = 0.5;
+
+  function setPlayingState(isPlaying) {
+    btn.classList.toggle('playing', isPlaying);
+    btn.setAttribute('aria-pressed', String(isPlaying));
+    btn.setAttribute(
+      'aria-label',
+      isPlaying ? 'Pause background music' : 'Play background music'
+    );
+
+    icon.textContent = isPlaying ? '⏸' : '▶';
+    text.textContent = isPlaying ? 'Pause Music' : 'Play Music';
+  }
+
+  btn.addEventListener('click', async function(){
+    if (audio.paused) {
+      try {
+        await audio.play();
+        setPlayingState(true);
+      } catch (error) {
+        console.error('Music could not play:', error);
+        setPlayingState(false);
+        alert('Music could not play. Make sure "falling.mp3" is inside the "assets" folder.');
+      }
     } else {
       audio.pause();
-      playing = false;
-      btn.classList.remove('playing');
-      btn.setAttribute('aria-pressed', 'false');
-      btn.setAttribute('aria-label', 'Play background music');
+      setPlayingState(false);
     }
   });
+
+  audio.addEventListener('play', function(){
+    setPlayingState(true);
+  });
+
+  audio.addEventListener('pause', function(){
+    setPlayingState(false);
+  });
+
+  audio.addEventListener('ended', function(){
+    setPlayingState(false);
+  });
+
+  setPlayingState(false);
 })();
 </script>
 </body>
